@@ -1,0 +1,102 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <style type="text/css"></style>
+  <!-- Load style sheets -->
+  <link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/themes/ui-lightness/jquery-ui.css" media = "all"/>
+  <!--  link rel="stylesheet" type="text/css" href="css/datePicker.css"--/>
+  
+  <!-- Load any supplemental Javascript libraries here -->
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+
+  <script type = "text/javascript">
+  var startDate, endDate, today;
+  var dates = [];
+
+  function loadCalendars() {
+
+		// send end date to begin at start date when a new start date is selected
+		$("#start_cal").datepicker({
+
+			minDate : 0,
+			onSelect : function(dateText, inst) {
+				today = new Date();
+				startDate = parseDate(dateText);
+				dayAfterStartDate = new Date();
+				dayAfterStartDate.setTime(startDate.valueOf());
+				dayAfterStartDate.setTime(startDate.getTime() + 86400000);
+				$("#end_cal").datepicker("option", "minDate", dayAfterStartDate);
+
+			}
+		});
+
+		//save differences between the two dates when start and end date are selected
+		$("#end_cal").datepicker({
+			minDate : 0,
+			// changeMonth: true,
+			// changeYear: true,
+			onSelect : function(dateText, inst) {
+				endDate = parseDate(dateText);
+				dates = getDates(startDate, endDate);
+				setNextButton(dates.length);
+			}
+		});
+
+
+
+		//remove the div causing bug
+		document.getElementById("ui-datepicker-div").style.display="none";  
+	}
+  
+//parse date
+  function parseDate(str) {
+  	var mdy = str.split('/');
+  	return new Date(mdy[2], mdy[0] - 1, mdy[1]);
+  }
+  
+  function setNextButton(length){
+	document.getElementById("next_link").href = "/wizard/{{city}}/" + length;
+	  
+  }
+
+
+  function highlightDays(first, second) {
+  	var difference = dateDifference(first, second);
+  	for ( var i = 0; i < difference; i++) {
+  		return [ true, 'highlight' ];
+  	}
+  }
+
+  function getDates( d1, d2 ){
+  	  var oneDay = 24*3600*1000;
+  	  var results = []
+  	  for (ms=d1*1,last=d2*1;ms<=last;ms+=oneDay){
+  	    results.push( new Date(ms) );
+  	  }
+  	  return results;
+  	}
+  </script>
+</head>
+<body onload = "loadCalendars()">
+Step 2: pick your travel dates
+<table>
+<tr>
+	<td>
+		<label >Begin date:</label> 
+		<input type="text" class = "clickables" id="start_cal" title="Begin date">
+	</td>
+</tr>
+<tr>
+	<td>
+		<label>End date: </label>
+		<input class = "clickables" id="end_cal"></input>
+	</td>
+</tr>
+</table>
+<a id = "next_link">Next</a>
+</body>
+</html>

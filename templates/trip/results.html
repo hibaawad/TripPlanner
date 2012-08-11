@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1138.32">
+  <style type="text/css">
+ 
+  </style>
+</head>
+<body>
+Hotels
+{% if hotels  %}
+    <ul>
+    {% for hotel in hotels  %}
+        <li><a href="/trip/hotel/{{ hotel.id }}/">{{ hotel.name }}</a></li>
+        <a href = "/trip/{{tripId}}/hotel/{{hotel.id}}/add">Add hotel to schedule</a>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No hotels are available.</p>
+{% endif %}
+Restaurants
+{% if restaurants  %}
+    <ul>
+    {% for restaurant in restaurants  %}
+        <li><a href="/trip/restaurant/{{ restaurant.id }}/">{{ restaurant.name }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No restaurants are available.</p>
+{% endif %}
+Attractions
+{% if attractions  %}
+
+    <ul>
+    {% for attraction in attractions  %}
+        <li><a href="/trip/attraction/{{ attraction.id }}/">{{ attraction.name }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No attractions are available.</p>
+{% endif %}
+</body>
+</html>
