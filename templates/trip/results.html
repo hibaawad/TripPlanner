@@ -1,47 +1,487 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="1138.32">
-  <style type="text/css">
- 
-  </style>
-</head>
-<body>
-Hotels
-{% if hotels  %}
-    <ul>
-    {% for hotel in hotels  %}
-        <li><a href="/trip/hotel/{{ hotel.id }}/">{{ hotel.name }}</a></li>
-        <a href = "/trip/{{tripId}}/hotel/{{hotel.id}}/add">Add hotel to schedule</a>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>No hotels are available.</p>
-{% endif %}
-Restaurants
-{% if restaurants  %}
-    <ul>
-    {% for restaurant in restaurants  %}
-        <li><a href="/trip/restaurant/{{ restaurant.id }}/">{{ restaurant.name }}</a></li>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>No restaurants are available.</p>
-{% endif %}
-Attractions
-{% if attractions  %}
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="Content-Style-Type" content="text/css">
+<title></title>
+<meta name="Generator" content="Cocoa HTML Writer">
+<meta name="CocoaVersion" content="1138.32">
+<style type="text/css">
 
-    <ul>
-    {% for attraction in attractions  %}
-        <li><a href="/trip/attraction/{{ attraction.id }}/">{{ attraction.name }}</a></li>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>No attractions are available.</p>
-{% endif %}
+
+#map_canvas {
+position: absolute;
+top: 5em;
+height: 500px;
+width: 100%
+}
+
+#calendar {
+width: 100%;
+}
+.place_list{
+overflow-y: scroll;
+height: 500px;
+}
+
+span.stars, span.stars span {
+			display: block;
+			background: url(http://www.ulmanen.fi/stuff/stars.png) 0 -16px repeat-x;
+			width: 80px;
+			height: 16px;
+		}
+	
+		span.stars span {
+			background-position: 0 0;
+		}
+
+</style>
+<link href="/static/css/bootstrap.css" rel="stylesheet">
+
+<link href='/static/css/fullcalendar.css' rel='stylesheet' type='text/css'  />
+
+
+
+<!-- link href="http://twitter.github.com/bootstrap/assets/css/bootstrap.css" rel="stylesheet" type="text/css" /-->
+
+<script type="text/javascript"
+	src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+
+<script type='text/javascript' src='/static/js/fullcalendar.js'></script>
+<script type="text/javascript"
+	src="http://twitter.github.com/bootstrap/assets/js/bootstrap-tab.js"></script>
+<script type="text/javascript"
+	src="http://twitter.github.com/bootstrap/assets/js/bootstrap-dropdown.js"></script>
+<script type = "text/javascript"
+	src = "http://twitter.github.com/bootstrap/assets/js/bootstrap-collapse.js"></script>
+<!--  script type="text/javascript" href="/static/bootsrap.js"></script-->
+<script type="text/javascript"
+	src="http://maps.googleapis.com/maps/api/js?key=AIzaSyBoaE_uGohIbX5PVa5xs3iCxFq2JOS3tGk&sensor=false"> </script>
+
+<script type="text/javascript">
+var infowindow = new google.maps.InfoWindow();
+var markers = {};
+var markersArray = [];
+var schedule = {{ schedule|safe }};
+var events = {{events|safe}};
+var startDate = new Date ('{{start|safe}}')
+var scheduleMarkers = [];
+var daycount = 1;
+var tripdays = "{{days}}";
+var map;
+$(function() {
+    $('span.stars').stars();
+});
+
+$.fn.stars = function() {
+	return $(this).each(function() {
+		$(this).html($('<span />').width(Math.max(0, (Math.min(5, parseFloat($(this).html())))) * 16));
+	});
+}
+
+function clearOverlays() {
+	  if (markersArray) {
+	    for (var i = 0; i < markersArray.length; i++ ) {
+	      markersArray[i].setMap(null);
+	    }
+	  }
+	}
+
+	function initialize() {
+		
+		var mapOptions = {
+			center : new google.maps.LatLng(42.3584308,-71.098326),
+			zoom : 13,
+			mapTypeId : google.maps.MapTypeId.ROADMAP
+		};
+		map = new google.maps.Map(document.getElementById("map_canvas"),
+				mapOptions);
+		//showSchedule(0)
+		
+		
+	  	
+		$('#calendar').fullCalendar({
+		    events: events, 
+		    defaultView: 'basicWeek',
+		    editable: true, 
+		    selectable: true,
+		    header: {
+				left: 'prev,next today',
+				center: 'title',
+				right: 'month,agendaWeek,agendaDay'
+			},
+		    date: startDate.getDate(),
+		    dayClick: function(date, allDay, jsEvent, view) {
+				
+		      	scheduleDay = getDeltaDay(startDate, date);
+		      
+		      	showSchedule(scheduleDay);
+		      	
+		    },
+		    
+		
+		eventClick: function(calEvent, jsEvent, view) {
+
+			showInfo(calEvent.place.id);
+
+	        // change the border color just for fun
+	        $(this).css('border-color', 'red');
+
+	    },
+		    
+		eventDrop: function(event,dayDelta,minuteDelta,allDay,revertFunc) {
+		    }
+		});
+		
+	}
+	
+	 function getDeltaDay( d1, d2 ){
+	  	  var oneDay = 24*3600*1000;
+	  	  var results = []
+	  	  for (ms=d1*1,last=d2*1;ms<=last;ms+=oneDay){
+	  	    results.push( new Date(ms) );
+	  	  }
+	  	  return results.length - 1;
+	  	}
+	
+	function showSchedule(day){
+		clearOverlays();
+		for (j=0; j<schedule[day].length; j++){
+				makeMarker(schedule[day][j].place.id, schedule[day][j].place.name, schedule[day][j].place.latitude, schedule[day][j].place.longitude);
+		}
+	}
+	
+	function showAttractions(){
+		clearOverlays();
+		{% for attraction in attractions %}
+		
+		makeMarker("{{attraction.id}}","{{attraction.name}}", "{{attraction.latitude}}", "{{attraction.longitude}}")
+		{% endfor %}		
+	}
+	
+	function showHotels(){
+		clearOverlays();
+		
+		{% for hotel in hotels %}
+		
+		makeMarker("{{hotel.id}}","{{hotel.name}}", "{{hotel.latitude}}", "{{hotel.longitude}}")
+		{% endfor %}
+	
+	}
+	
+	function showRestaurants(){
+		clearOverlays();
+		
+		{% for restaurant in restaurants %}
+		
+		makeMarker("{{restaurant.id}}","{{restaurant.name}}", "{{restaurant.latitude}}", "{{restaurant.longitude}}")
+		{% endfor %}
+		
+	}
+	
+	function makeMarker (id, name, latit, longit){
+				//var image = new google.maps.MarkerImage("http://maps.gstatic.com/mapfiles/place_api/icons/lodging-71.png",
+      	            // This marker is 20 pixels wide by 32 pixels tall.
+      	          //  new google.maps.Size(20, 32),
+      	            // The origin for this image is 0,0.
+      	          //  new google.maps.Point(0,0),
+      	            // The anchor for this image is the base of the flagpole at 0,32.
+      	           // new google.maps.Point(0, 32), 
+      	           // new google.maps.Size(20, 32));
+	
+          var marker = new google.maps.Marker({
+            map: map,
+            position: new google.maps.LatLng(latit, longit),
+          });
+          markersArray.push(marker);
+
+          google.maps.event.addListener(marker, 'click', function() {
+            infowindow.setContent(name);
+            infowindow.open(map, this);
+          });
+          markers[id] = marker;
+	}
+	
+	
+	   
+	 function showInfo(id){
+		   google.maps.event.trigger(markers[id], 'click');
+		   
+	  }
+    
+	 function nextDay(){
+		 
+		// document.getElementById("previous_link").onclick = previousDay();
+		 if (daycount < tripdays){
+		//	 document.getElementById("next_link").onclick ="";
+		 
+		daycount +=1
+		 showSchedule(daycount-1);
+		 document.getElementById("daySchedule").innerHTML = daycount;
+		 }
+		 return false;
+	 }
+	 
+	 function previousDay(){
+		 
+	//	 document.getElementById("next_link").onclick = nextDay
+		 if (daycount > 1){
+	//		 document.getElementById("previous_link").onclick = "";
+		 
+		 daycount = daycount - 1
+		 showSchedule(daycount-1);
+		 document.getElementById("daySchedule").innerHTML = daycount;
+		 }
+		 return false;
+	 }
+	 
+	 function getData(type,order){
+		 $.ajax({
+		        type: "GET",
+		        url: "?type=" + type + "&order=" + order,
+		        success: function(html) {
+		          alert ('hello');
+		          document.location.reload(document.getElementById("hotelAccordion"));
+		          //$("#hotelAccordion").load(location.href+" #hotelAccordion>*","");
+		            	
+		        }
+		 });
+	 }
+    
+</script>
+</head>
+<body onload="initialize()">
+
+	<div class="tabbables">
+		
+		<ul id="myTab" class="nav nav-tabs">
+			<li class="active"><a href="#schedule" data-toggle="tab" onclick = "showSchedule(0)">Schedule</a></li>
+			<li><a href="#hotels" data-toggle="tab" onclick = "showHotels()">Hotels</a></li>
+			<li><a href="#attractions" data-toggle="tab" onclick= "showAttractions()" >Attractions</a></li>
+			<li><a href="#restaurants" data-toggle="tab" onclick = "showRestaurants()">Restaurants</a></li>
+		</ul>
+		<table>
+			<tr>
+			<td width="40%">
+		<div id="myTabContent" class="tab-content">
+			<div class="tab-pane active" id="schedule">
+			   
+    	
+			<div id='calendar'></div>	
+			</div>
+			<div class="tab-pane" id="hotels">
+				
+
+							<div class="dropdown" id="menu1"><a class="dropdown-toggle"
+								data-toggle="dropdown" href="#menu1"> Order by <b
+									class="caret"></b>
+							</a>
+								<ul class="dropdown-menu">
+									<li><a href="#" onclick = "getData('hotels', 'a')">Price ascending</a></li>
+									<li><a href="#" onclick = "getData(hotels, d)"</a> Price decsending</li>
+									<li><a href="#">Something else here</a></li>
+								</ul>
+								</div>
+							<div id = "hotel_list" class = "place_list">
+							
+							<p>
+							<div class="accordion" id="hotelAccordion">
+								{% for hotel in hotels %}
+								<div class="accordion-group">
+              					<div class="accordion-heading">
+                				<a class="accordion-toggle" data-toggle="collapse" data-parent="hotelAccordion" href="#{{hotel.id}}" onclick = "showInfo({{hotel.id}})">
+                 				{{hotel.name}} <span class = stars>{{hotel.rating}}</span>
+                 				</a>
+              					</div>
+              					<div id="{{hotel.id}}" class="accordion-body collapse" style="height: 0px; ">
+                					<div class="accordion-inner">
+                					
+                						Phone Number: {{hotel.phoneNumber}}
+                						Address : {{hotel.address}}
+                						
+                						{% if hotel.website %}
+                							</br><a href = "{{hotel.website}}" >website</a>
+                						{% endif %}
+                						
+                						
+                						{% if hotel.url %}
+                							</br><a href = "{{hotel.url}}" >url</a>
+                						{% endif %}
+                				
+                						
+                							{% for review in hotel.review_set.all %}
+                							</p>
+                								{%for rating in review.rating_set.all %}
+                									</br> {{rating.aspect}} : {{rating.rating}} 
+                								{%endfor %}
+                							{{review.text}}
+                							</p>
+                							Name: {{review.author}}
+                							</p>
+                							Time {{review.time}}
+                							</p>
+                							{% endfor %}
+                						
+                						
+                						<a id="link{{hotel.id}}" href="/trip/hotel/{{ hotel.id }}/">More info</a> 
+                						
+                					</div>
+              					</div>
+            				</div>
+				
+								{% endfor %}
+						</div>	
+				</div>
+			</div>
+			
+			
+				<div class="tab-pane " id="restaurants">
+				
+
+							<div class="dropdown" id="menu1"><a class="dropdown-toggle"
+								data-toggle="dropdown" href="#menu1"> Order by <b
+									class="caret"></b>
+							</a>
+								<ul class="dropdown-menu">
+									<li><a href="?xhr=1">Price ascending</a></li>
+									<li><a href="?xhr=2">Price descending</a></li>
+									<li><a href="?xhr=3">Something else here</a></li>
+								</ul>
+								
+								</div>
+							<div id = "restaurant_list" class = "place_list">
+							
+							<p>
+							<div class="accordion" id="restaurantAccordion">
+								{% for restaurant in restaurants %}
+								<div class="accordion-group">
+              					<div class="accordion-heading">
+                				<a class="accordion-toggle" data-toggle="collapse" data-parent="restaurantAccordion" href="#{{restaurant.id}}">
+                 				{{restaurant.name}}
+                 				</a>
+              					</div>
+              					<div id="{{restaurant.id}}" class="accordion-body collapse" style="height: 0px; ">
+                					<div class="accordion-inner">
+                					
+                						
+                						Address : {{restaurant.address}}
+                						
+                						{% if restaurant.website %}
+                							</br><a href = "{{restaurant.website}}" >website</a>
+                						{% endif %}
+                						
+                						
+                						{% if restaurant.phoneNumber %}
+                							</br> Phone Number: {{restaurant.phoneNumber}}
+                						{% endif %}
+                						
+                						{% if restaurant.url %}
+                							</br><a href = "{{restaurant.url}}" >url</a>
+                						{% endif %}
+                				
+                						
+                							{% for review in restaurant.review_set.all %}
+                								{%for rating in review.rating_set.all %}
+                									</br> {{rating.aspect}} : {{rating.rating}} 
+                								{%endfor %}
+                							</p>
+                							{{review.text}}
+                							</p>
+                							Name: {{review.author}}
+                							</p>
+                							Time {{review.time}}
+                							</p>
+                							{% endfor %}
+                						
+                						{% if restaurant.hours %}
+                							</br>Hours: {{restaurant.hours}}
+                						{% endif %}
+                						<a id="link{{restaurant.id}}" href="/trip/attraction/{{ restaurant.id }}/">More info</a> 
+                						
+                					</div>
+              					</div>
+            				</div>
+						{% endfor %}
+					</div>	
+				</div>
+			</div>
+		<div class="tab-pane " id="attractions">
+				
+
+							<div class="dropdown" id="menu1"><a class="dropdown-toggle"
+								data-toggle="dropdown" href="#menu1"> Order by <b
+									class="caret"></b>
+							</a>
+								<ul class="dropdown-menu">
+									<li><a href="?xhr=1">Price ascending</a></li>
+									<li><a href="?xhr=2">Price descending</a></li>
+									<li><a href="?xhr=3">Something else here</a></li>
+								</ul>
+								</div>
+							<div id = "attraction_list" class = "place_list">
+							
+							<p>
+							<div class="accordion" id="attractionAccordion">
+								{% for attraction in attractions %}
+								<div class="accordion-group">
+              					<div class="accordion-heading">
+                				<a class="accordion-toggle" data-toggle="collapse" data-parent="attractionAccordion" href="#{{attraction.id}}">
+                 				{{attraction.name}}
+                 				</a>
+              					</div>
+              					<div id="{{attraction.id}}" class="accordion-body collapse" style="height: 0px; ">
+                					<div class="accordion-inner">
+                					
+                						
+                						Address : {{attraction.address}}
+                						
+                						{% if attraction.website %}
+                							</br><a href = "{{attraction.website}}" >website</a>
+                						{% endif %}
+                						
+                						
+                						{% if attraction.phoneNumber %}
+                							</br> Phone Number: {{attraction.phoneNumber}}
+                						{% endif %}
+                						
+                						{% if attraction.url %}
+                							</br><a href = "{{attraction.url}}" >url</a>
+                						{% endif %}
+                				
+                						
+                							{% for review in attraction.review_set.all %}
+                								{%for rating in review.rating_set.all %}
+                									</br> {{rating.aspect}} : {{rating.rating}} 
+                								{%endfor %}
+                							</p>
+                							{{review.text}}
+                							</p>
+                							Name: {{review.author}}
+                							</p>
+                							Time {{review.time}}
+                							</p>
+                							{% endfor %}
+                						
+                						{% if attraction.hours %}
+                							</br>Hours: {{attraction.hours}}
+                						{% endif %}
+                						<a id="link{{attraction.id}}" href="/trip/attraction/{{ attraction.id }}/">More info</a> 
+                						
+                					</div>
+              					</div>
+            				</div>
+						{% endfor %}
+					</div>	
+				</div>
+			</div>
+		</div>
+	</td>
+	<td>
+	<div id="map_canvas"></div>
+	</td>
+	</tr>
+	</table>
+</div>
 </body>
 </html>

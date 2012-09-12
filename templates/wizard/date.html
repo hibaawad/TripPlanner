@@ -9,7 +9,7 @@
   <link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/themes/ui-lightness/jquery-ui.css" media = "all"/>
   <!--  link rel="stylesheet" type="text/css" href="css/datePicker.css"--/>
   
-  <!-- Load any supplemental Javascript libraries here -->
+  <!-- Loasd any supplemental Javascript libraries here -->
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
   <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
 
@@ -50,6 +50,15 @@
 
 		//remove the div causing bug
 		document.getElementById("ui-datepicker-div").style.display="none";  
+		
+		//if the was cached
+		if (start_cal.value != '' && end_cal.value != ''){
+		startDate = parseDate(start_cal.value);
+		endDate = parseDate(end_cal.value);
+		dates = getDates(startDate, endDate);
+		setNextButton(dates.length);
+		}
+		
 	}
   
 //parse date
@@ -59,7 +68,7 @@
   }
   
   function setNextButton(length){
-	document.getElementById("next_link").href = "/wizard/{{city}}/" + length;
+	document.getElementById("next_link").href = "/wizard/{{city}}/" + length + "?date=" + startDate.toUTCString();
 	  
   }
 
@@ -97,6 +106,7 @@ Step 2: pick your travel dates
 	</td>
 </tr>
 </table>
+<a href = "/wizard/">Previous</a>
 <a id = "next_link">Next</a>
 </body>
 </html>

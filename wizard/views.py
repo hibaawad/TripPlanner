@@ -14,12 +14,19 @@ def date(request, city):
 
 def theme(request, city, days):
     t = loader.get_template('wizard/theme.html')
+    if "date" in request.GET:
+        date = request.GET['date']
+    else: date =    request.session["date"]
+    print 'date', date
+    request.session["date"] = date
     c = Context({'city': city, 'days': days})
     return HttpResponse(t.render(c))
 
 
 def intensity(request, city, days, theme):
     t = loader.get_template('wizard/intensity.html')
+    date = request.session["date"]
+    print 'dateintensity', date
     c = Context({'city': city, 'days': days, 'theme':theme})
     return HttpResponse(t.render(c))
 
